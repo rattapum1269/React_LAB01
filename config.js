@@ -39,5 +39,6 @@ module.exports = {
     ],
 
     serverURL: '192.168.2.56',
+    socketURL: '192.168.2.56',
     
 }
