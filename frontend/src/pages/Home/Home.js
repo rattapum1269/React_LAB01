@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react'
+import React, { useState, } from 'react'
 import Page from '../../containers/Page/Page'
 import { useIntl } from 'react-intl'
 
@@ -6,17 +6,9 @@ import Grid from '@mui/material/Unstable_Grid2';
 
 import { 
   TextareaAutosize,
-  Typography,
-  Backdrop,
-  CircularProgress,
   TextField,
   Button,
-  Checkbox,
-  Tooltip,
-  IconButton,
   Box,
-  Paper,
-  Divider,
 } from '@mui/material'
 
 const HomePage = () => {
@@ -66,7 +58,7 @@ const HomePage = () => {
 
     if (json.length)  {
       for (let i in json)  {
-        if (json[i]._id == data._id)  {
+        if (json[i]._id === data._id)  {
           alert('_id duplicated.')
           return
         }
