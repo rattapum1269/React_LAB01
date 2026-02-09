@@ -10,7 +10,10 @@ import { useMenu } from '../../providers/Menu'
 import { useTheme } from '@mui/material/styles'
 import CustomPaper from '../../components/CustomPaper'
 
+import { jwtDecode } from "jwt-decode";
+
 const SignIn = ({ redirectTo = '/' }) => {
+
   const intl = useIntl()
   const theme = useTheme()
   const navigate = useNavigate()
@@ -20,15 +23,43 @@ const SignIn = ({ redirectTo = '/' }) => {
   const { toggleThis } = useMenu()
   const { setAuth } = useAuth()
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
+
     event.preventDefault()
-    authenticate({
-      displayName: 'User',
-      email: username,
+
+    const resp = await fetch('/api/users/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userName: username,
+        password: password,
+      })
     })
+    const data = await resp.json();
+
+    if (data)  {
+
+      if (data.token)  {
+
+        const decoded = jwtDecode(data.token);
+        console.log(data, decoded)
+
+        authenticate({
+          displayName: decoded.userLevel,
+          email: username,
+          userName: decoded.userName,
+          token: data.token,
+        })
+      }
+      else  alert(data.text);
+
+    }
+    else alert('Error.')
+    
   }
 
   const authenticate = (user) => {
+
     setAuth({ isAuthenticated: true, ...user })
     toggleThis('isAuthMenuOpen', false)
 

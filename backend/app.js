@@ -14,6 +14,7 @@ const {
   readcfg,
   grpcInit,
   isDbReady,
+  createPassword,
 } = require('./common')
 
 let cfg = readcfg(true);
@@ -37,8 +38,9 @@ async function main () {
      
   const preferences = require('./routes/preferences').router
   require('./routes/preferences').restInit(
-    readcfg, 
     dbase, 
+    readcfg, 
+    createPassword,
   )
 
   const privateKey = 'secret'

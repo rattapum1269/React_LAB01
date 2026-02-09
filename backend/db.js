@@ -1,6 +1,6 @@
 const {
   readcfg,
-  // sleep,
+  createPassword,
 } = require('./common')
 const cfg = readcfg();
 
@@ -42,7 +42,7 @@ function baseConnect (name,) {
 
     // Wait for the connection to open (optional, as Mongoose buffers operations)
     conn.on('connected', () => {
-        console.log('\x1b[33m%s\x1b[0m', 'Reconnect to ->', dbaseURL+name);
+        console.log('\x1b[33m%s\x1b[0m', 'Connect to ->', dbaseURL+name);
         db.MainBase = conn
         resolve(conn);
     });
@@ -65,7 +65,13 @@ function baseConnect (name,) {
 
 async function createDocument (call, cb) {
 
-  console.log('createDocument ->', call.request.collection);
+  console.log('createDocument ->', call.request.collection, );
+
+  const obj = {
+    collection: call.request.collection,
+    query: call.request.query,
+    data: JSON.stringify({})
+  }
 
   const base = db.MainBase
   if (base)  {    
@@ -75,23 +81,33 @@ async function createDocument (call, cb) {
     
     if (!data._id)   data._id = new mongoose.Types.ObjectId()+''
     
-    const model = new Model(data);
-    await model.save();
+    // const model = new Model(data);
+    // await model.save();
+    // obj.data = JSON.stringify({ _id: data._id})
+    // cb(null, obj);
 
-    const obj = {
-      collection: call.request.collection,
-    }
-    cb(null, obj);
+    Model.insertOne(data).then(function (resp) { 
+      // console.log(resp)
+      if (resp)  obj.data = JSON.stringify([resp])
+      cb(null, obj)
+    });  
+    
   }
   else  {
-    cb(null, { collection: 'error', });
+    cb(null, obj);
   }
 }
 
 async function readDocument (call, cb) {
   
   console.log('readDocument ->', call.request.collection, call.request.query);
-  
+
+  const obj = {
+    collection: call.request.collection,
+    query: call.request.query,
+    data: JSON.stringify([])
+  }
+ 
   const base = db.MainBase
   if (base)  {    
 
@@ -107,38 +123,36 @@ async function readDocument (call, cb) {
     let select = null
     if (call.request.select && call.request.select != '')  select = JSON.parse(call.request.select)
 
-    Model.find(query).populate(populate).select(select).exec(function (err, resp) { 
-
-      const obj = {
-        collection: call.request.collection,
-        query: call.request.query,
-        data: JSON.stringify([])
-      }
-
-      if (resp)  {
-        obj.data = JSON.stringify(resp)
-        cb(err, obj)
-      }
-      else  {
-        obj.collection = 'error'
-        cb(err, obj);
-      }
-
-    });  
+    if (Object.keys(query).length)  {      
+      Model.findOne(query).populate(populate).select(select).then(function (resp) { 
+        // console.log(resp)
+        if (resp)  obj.data = JSON.stringify([resp])
+        cb(null, obj)
+      });  
+    }
+    else  {
+      Model.find(query).populate(populate).select(select).then(function (resp) { 
+        // console.log(resp)
+        if (resp)  obj.data = JSON.stringify(resp)
+        cb(null, obj)
+      });  
+    }
 
   }
   else  {
-    cb(null, {
-      collection: 'error',
-      query: call.request.query,
-      data: JSON.stringify([])
-    })  
+    cb(null, obj)  
   }
 }
 
 async function updateDocument (call, cb) {
 
-  // console.log('updateDocument ->', call.request.collection);
+  console.log('updateDocument ->', call.request.collection, call.request.query);
+
+  const obj = {
+    collection: call.request.collection,
+    query: call.request.query,
+    data: JSON.stringify({})
+  }
 
   const base = db.MainBase
   if (base)  {    
@@ -147,46 +161,35 @@ async function updateDocument (call, cb) {
     const query = JSON.parse(call.request.query)
     let data = JSON.parse(call.request.data)
 
-    Model.updateOne(query, { $set: data } , (err , resp) => {
-
-      console.log('updateDocument ->', err, resp, '/', call.request.collection, call.request.query);
-
+    Model.updateOne(query, { $set: data } ).then(function (resp) { 
+      // console.log('updateDocument ->', resp,);
       if (resp)  {
-        
         if (resp.nModified == 0 && resp.n == 0) {
           console.error('updateDocument -> error!');
         }
-
-        const obj = {
-          collection: call.request.collection,
-          query: call.request.query,
-          data: JSON.stringify(resp)
-        }
-
-        cb(err, obj)
+        obj.data = JSON.stringify(resp)
+        cb(null, obj)
       }
       else  {
-        cb(null, {
-          collection: 'error',
-          query: call.request.query,
-          data: JSON.stringify({})
-        });
+        cb(null, obj);
       }
-
     });
+
   }
   else  {
-    cb(null, {
-      collection: 'error',
-      query: call.request.query,
-      data: JSON.stringify({})
-    });
+    cb(null, obj);
   }
 }
 
 async function deleteDocument (call, cb) {
 
-  console.log('deleteDocument ->', call.request.collection);
+  console.log('deleteDocument ->', call.request.collection, call.request.query,);
+
+  const obj = {
+    collection: call.request.collection,
+    query: call.request.query,
+    data: JSON.stringify({})
+  }
 
   const base = db.MainBase
   if (base)  {    
@@ -194,32 +197,17 @@ async function deleteDocument (call, cb) {
     const Model = base.models[call.request.collection]
     const query = JSON.parse(call.request.query)
 
-    Model.deleteOne(query, (err , resp) => {
+    Model.deleteOne(query).then(function (resp) { 
       // console.log(err, resp);
       if (resp)  {
-        const obj = {
-          collection: call.request.collection,
-          query: call.request.query,
-          data: JSON.stringify(resp)
-        }
-        cb(err, obj)
+        obj.data = JSON.stringify(resp)
       }
-      else  {
-        cb(null, {
-          collection: 'error',
-          query: call.request.query,
-          data: JSON.stringify({})
-        });
-      }
-
+      cb(null, obj)
     });  
+
   }
   else  {
-    cb(null, {
-      collection: 'error',
-      query: call.request.query,
-      data: JSON.stringify({})
-    });
+    cb(null, obj);
   }
 }
 
@@ -305,6 +293,111 @@ async function main ()  {
   let dateTime = new Date();
   console.log("Dbase Server port ("+cfg.dbasePort+") start ->", dateTime.getDate()+'/'+(dateTime.getMonth()+1)+'/'+dateTime.getFullYear(), 
   dateTime.getHours()+':'+dateTime.getMinutes()+':'+dateTime.getSeconds());  
+
+  let pwd = await createPassword('Default@1234');
+  let user = null
+
+  readDocument({ request:{
+    collection: 'User',
+    // query: JSON.stringify({ _id: 'admin'}),
+    query: JSON.stringify({}),
+  }}, (err, resp) => {
+
+    if (resp)  {
+      let temp = JSON.parse(resp.data)
+      if (temp.length)  user = temp[0]
+      console.log('Users ->', err, user)
+    }
+
+    if (!user)  {
+      user = {
+        _id: 'admin',
+        userName: 'admin',
+        fullName: 'admin',
+        userLevel: 'admin',
+        userState: 'enable',
+        email: 'admin@gmail.com',
+        password: pwd,
+        dateCreate: new Date()+'',
+        dateExpire: '',
+      }
+      createDocument({ request: {
+        collection: 'User',
+        data: JSON.stringify(user),
+      }}, (err, resp) => {
+        if (resp)  {
+          const status = JSON.parse(resp.data)
+          console.log('Create ->', status)
+        }
+      })
+    }
+
+  });          
+
+/*     readDocument({ request:{
+      collection: 'User',
+      // query: JSON.stringify({ _id: 'admin'}),
+      query: JSON.stringify({}),
+    }}, (err, resp) => {
+
+      if (resp)  {
+        user = JSON.parse(resp.data)
+        console.log('Users ->', err, user)
+      }
+     
+      if (user)  {
+
+        user.password = pwd
+
+        updateDocument({ request: { 
+          collection: 'User',
+          query: JSON.stringify({ _id: 'admin' }),
+          data: JSON.stringify(user),
+        }}, (err, resp) => {
+
+          if (resp)  {
+            const status = JSON.parse(resp.data)
+            console.log('Update ->', status)
+          }
+
+          deleteDocument({ request:{
+            collection: 'User',
+            query: JSON.stringify({ _id: 'admin' }),
+          }}, (err, resp) => {
+
+            if (resp)  {
+              const status = JSON.parse(resp.data)
+              console.log('Delete ->', status)
+            }
+
+            user = {
+              _id: 'admin',
+              userName: 'admin',
+              fullName: 'admin',
+              userLevel: 'admin',
+              userState: 'enable',
+              email: 'admin@gmail.com',
+              password: pwd,
+              dateCreate: new Date()+'',
+              dateExpire: '',
+            }
+            createDocument({ request: {
+              collection: 'User',
+              data: JSON.stringify(user),
+            }}, (err, resp) => {
+              if (resp)  {
+                const status = JSON.parse(resp.data)
+                console.log('Create ->', status)
+              }
+            })
+
+          });          
+
+        })
+
+      }     
+
+    }); */
 
 }
 

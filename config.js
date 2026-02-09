@@ -4,7 +4,7 @@ module.exports = {
     server: true,  // true or false
     protocal: 'http',  // http or https
     productName: 'CRUD',
-    baseName: 'crud_config',
+    baseName: 'CRUD',
     serverPort: port,
     dbasePort: port+1,    
     dbaseIP: 'localhost',

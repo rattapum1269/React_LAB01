@@ -22,13 +22,11 @@ message baseReq {
 }
 
 message document {
-  string base = 1;
-  string collection = 2;
-  string query = 3;
-  string data = 4;
-  string populate = 5;
-  string select = 6;
-  string options = 7;
+  string collection = 1;
+  string query = 2;
+  string data = 3;
+  string populate = 4;
+  string select = 5;
 }
 
 message respObj {

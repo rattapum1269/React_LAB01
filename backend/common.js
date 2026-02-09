@@ -1,5 +1,6 @@
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
+const bcrypt = require('bcryptjs');
 
 let fs = require('fs')
 let cfg = null
@@ -59,9 +60,27 @@ function isDbReady(dbase) {
   });
 }
 
+function createPassword (password)  {
+  return new Promise(resolve => {
+    bcrypt.genSalt(10, (err, salt) => {
+      if(err) console.error('There was an error', err);
+      else {
+        bcrypt.hash(password, salt, (err, hash) => {
+          if(err) console.error('There was an error', err);
+          else {
+            // console.log('hash =>', hash);
+          }
+          resolve(hash);
+        });
+      }
+    });
+  });    
+}
+
 module.exports = {
   sleep: sleep,
   readcfg: readcfg,
   grpcInit: grpcInit,
   isDbReady: isDbReady,
+  createPassword: createPassword,
 }

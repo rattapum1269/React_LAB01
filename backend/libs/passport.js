@@ -13,35 +13,60 @@ module.exports = (
   // opts.secretOrKey = 'secret';
   opts.secretOrKey = privateKey;
 
-  passport.use(new JWTStrategy(opts, (jwt_payload, resp) => {
+  passport.use(new JWTStrategy(opts, (jwt_payload, cb) => {
     console.log('passport ->', jwt_payload.userName, )
     dbase.readDocument({ 
-      base: '',
       collection: 'User',
       query: JSON.stringify({ userName: jwt_payload.userName, }),
-    }, (err, resp2) => {
-      let user = { userName: '' }
-      if (resp2 && resp2.collection != 'error')  user = JSON.parse(resp2.data)
-      // console.log('Passport ->', user);
-      if (err)  {
+    }, (err, resp) => {
+
+      let user = null
+
+      if (resp)  {
+        
+        let temp = JSON.parse(resp.data)
+        if (temp.length)  user = temp[0]
+
+        if (user)  {
+          return cb(null, user);
+        }
+        else  {
+          return cb(null, {
+            text: 'Users token error!',
+          });
+        }
+
+      }
+      else  {
         console.log('\x1b[31m%s\x1b[0m', 'passport -> Users database connection error!');
-        return resp(null, {
+        return cb(null, {
           text: 'Users database connection error!',
         });
-        // return resp(null, null)
+      }
+
+/*       if (resp && resp.collection != 'error')  user = JSON.parse(resp.data)
+      // console.log('Passport ->', user);
+
+      if (err)  {
+        console.log('\x1b[31m%s\x1b[0m', 'passport -> Users database connection error!');
+        return cb(null, {
+          text: 'Users database connection error!',
+        });
+        // return cb(null, null)
       }
       else  {
         if (user.userName == '')  {
-          return resp(null, {
+          return cb(null, {
             text: 'Users token error!',
           });
-          // return resp(null, null)
+          // return cb(null, null)
         }
         else  {
           user.text = null;
-          return resp(null, user);
+          return cb(null, user);
         }
-      }
+      } */
+
     })
   }));
 }

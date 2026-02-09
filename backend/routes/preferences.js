@@ -3,8 +3,9 @@ const router = express.Router();
 const passport = require('passport');
 
 function restInit(
-    readcfg, 
     dbase, 
+    readcfg, 
+    createPassword,
 )  {
 
   let cfg = readcfg(false)
@@ -16,37 +17,29 @@ function restInit(
   });
 
   router.post('/createDocument', passport.authenticate('jwt', { session: false }), function(req, res) {
+    (async () => {
 
-    console.log('/createDocument ->', req.body.collection);
+      console.log('/createDocument ->', req.body);
 
-    let base = null
-    if (req.body.base) base = req.body.base
+      if (req.body.data.password)  req.body.data.password = await createPassword(req.body.data.password);
 
-    // const resp = await createDocument({
-    //   base: base,
-    //   collection: req.body.collection,
-    //   data: JSON.stringify(req.body.data),
-    //   options: options,
-    // }, dbase)
+      dbase.createDocument({
+        collection: req.body.collection,
+        data: JSON.stringify(req.body.data),
+      }, (err, resp) => {
 
-    dbase.createDocument({
-      collection: req.body.collection,
-      data: JSON.stringify(req.body.data),
-    }, (err, resp) => {
-      if (resp)  {
-        if (resp.collection == 'error')  return res.json(null)
-        else  return res.json(JSON.parse(resp.data))
-      }
-      else  return res.json(null)
-    });  
+        console.log(err, resp)
 
+        if (resp)  return res.json(JSON.parse(resp.data))
+        else return res.json([])
+        
+      });  
+
+    })()
   });
 
   router.post('/readDocument', passport.authenticate('jwt', { session: false }), function(req, res) {
-    console.log('/readDocument ->', req.body.collection);
-
-    let base = null
-    if (req.body.base) base = req.body.base
+    console.log('/readDocument ->', req.body);
 
     let populate = null
     if (req.body.populate) populate = JSON.stringify(req.body.populate)
@@ -54,27 +47,18 @@ function restInit(
     let select = null
     if (req.body.select) select = JSON.stringify(req.body.select)
 
-    // const resp = await readDocument({
-    //   base: base,
-    //   collection: req.body.collection,
-    //   query: JSON.stringify(req.body.query),
-    //   populate: populate,
-    //   select: select,
-    //   options: options,
-    // }, dbase)
-
     dbase.readDocument({
       collection: req.body.collection,
       query: JSON.stringify(req.body.query),
       populate: populate,
       select: select,
-    }, (err, resp) => {
-      // console.log(err, resp)
-      if (resp)  {
-        if (resp.collection == 'error')  return res.json(null)
-        else  return res.json(JSON.parse(resp.data))  
-      }
-      else  return res.json(null)
+    }, (err, resp) => {      
+      
+      console.log(err, resp)
+
+      if (resp)  return res.json(JSON.parse(resp.data))
+      else return res.json([])
+
     });      
 
   });
@@ -82,54 +66,34 @@ function restInit(
   router.post('/updateDocument', passport.authenticate('jwt', { session: false }), function(req, res) {
       console.log('/updateDocument ->', req.body);
 
-      let base = null
-      if (req.body.base) base = req.body.base
-
-      // const resp = await updateDocument({
-      //   base: base,
-      //   collection: req.body.collection,
-      //   query: JSON.stringify(req.body.query),
-      //   data: JSON.stringify(req.body.data),
-      //   options: options,
-      // }, dbase)
-
       dbase.updateDocument({
         collection: req.body.collection,
-        query: JSON.stringify(req.body.query),
+        query: JSON.stringify({ _id: req.body.data._id}),
         data: JSON.stringify(req.body.data),
       }, (err, resp) => {
-        // console.log(err, resp)
-        if (resp)  {
-          if (resp.collection == 'error')  return res.json(null)
-          else  return res.json(JSON.parse(resp.data))  
-        }
-        else  return res.json(null)
-      });
+
+      console.log(err, resp)
+
+      if (resp)  return res.json(JSON.parse(resp.data))
+      else return res.json([])
+
+    });
 
   });
 
   router.post('/deleteDocument', passport.authenticate('jwt', { session: false }), function(req, res) {
-    console.log('/deleteDocument ->', req.body.collection);
-
-    let base = null
-    if (req.body.base) base = req.body.base
-
-    // const resp = await deleteDocument({
-    //   base: base,
-    //   collection: req.body.collection,
-    //   query: JSON.stringify(req.body.query),
-    // }, dbase)
+    console.log('/deleteDocument ->', req.body);
 
     dbase.deleteDocument({
       collection: req.body.collection,
       query: JSON.stringify(req.body.query),
     }, (err, resp) => {
-      // console.log(err, resp)
-      if (resp)  {
-        if (resp.collection == 'error')  return res.json(null)
-        else  return res.json(JSON.parse(resp.data))  
-      }
-      else  return res.json(null)
+
+      console.log(err, resp)
+
+      if (resp)  return res.json(JSON.parse(resp.data))
+      else return res.json([])
+
     });  
 
   });
