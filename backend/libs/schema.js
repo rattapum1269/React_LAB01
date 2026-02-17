@@ -13,7 +13,18 @@ const userSchema = new Schema({
   dateExpire: Date,
 })
 
+// --- [เพิ่มส่วนนี้] Schema ของ Device ---
+const deviceSchema = new Schema({
+  _id: String,
+  name: String,
+  type: String,
+  status: String,
+  script: String, // เก็บโค้ด JavaScript
+})
+// ------------------------------------
+
 module.exports = {
   mongoose: mongoose,
   userSchema: userSchema,
+  deviceSchema: deviceSchema, // <-- อย่าลืม export ออกไป
 }

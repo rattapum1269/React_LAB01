@@ -1,21 +1,18 @@
 /* eslint-disable react/jsx-key */
 import React, { lazy } from 'react'
 import AuthorizedRoute from '../components/AuthorizedRoute'
-import UnauthorizedRoute from '..//components/UnauthorizedRoute'
+import UnauthorizedRoute from '../components/UnauthorizedRoute'
 
 const SignIn = lazy(() => import('../pages/SignIn/SignIn'))
 const SignUp = lazy(() => import('../pages/SignUp/SignUp'))
 const PasswordReset = lazy(() => import('../pages/PasswordReset/PasswordReset'))
 const About = lazy(() => import('../pages/About'))
 const Home = lazy(() => import('../pages/Home/Home'))
-const MyAccount = lazy(() => import('../pages/MyAccount/MyAccount')) 
-
-/* const DialogDemo = lazy(() => import('../pages/DialogDemo/DialogDemo'))
-const ToastDemo = lazy(() => import('../pages/ToastDemo/ToastDemo'))
-const FilterDemo = lazy(() => import('../pages/FilterDemo'))
-const ListPageDemo = lazy(() => import('../pages/ListPageDemo'))
-const TabsDemo = lazy(() => import('../pages/TabsDemo'))
-*/
+const MyAccount = lazy(() => import('../pages/MyAccount/MyAccount'))
+const Users = lazy(() => import('../pages/Users/Users'))
+const User = lazy(() => import('../pages/Users/User_show')) // ไฟล์ User เดิมของคุณ
+const Dashboard = lazy(() => import('../pages/Dashboard/Dashboard'))
+const Device = lazy(() => import('../pages/Dashboard/Device')) // ไฟล์ Device ที่มี Script Editor
 
 const routes = [
   {
@@ -68,51 +65,44 @@ const routes = [
       </AuthorizedRoute>
     ),
   },
-/*   {
-    path: '/dialog_demo',
+  {
+    path: '/users',
     exact: true,
     element: (
       <AuthorizedRoute>
-        <DialogDemo />
+        <Users />
       </AuthorizedRoute>
     ),
   },
   {
-    path: '/toast_demo',
+    path: '/users/:id',
     exact: true,
     element: (
       <AuthorizedRoute>
-        <ToastDemo />
+        <User />
+      </AuthorizedRoute>
+    ),
+  },
+  // --- ส่วนของ Dashboard Routes ---
+  {
+    path: '/dashboard',
+    exact: true,
+    element: (
+      <AuthorizedRoute>
+        <Dashboard />
       </AuthorizedRoute>
     ),
   },
   {
-    path: '/filter_demo',
+    path: '/dashboard/:id', // รองรับทั้ง /dashboard/create และ /dashboard/123
     exact: true,
     element: (
       <AuthorizedRoute>
-        <FilterDemo />
+        <Device />
       </AuthorizedRoute>
     ),
   },
-  {
-    path: '/list_page_demo',
-    exact: true,
-    element: (
-      <AuthorizedRoute>
-        <ListPageDemo />
-      </AuthorizedRoute>
-    ),
-  },
-  {
-    path: '/tabs_demo',
-    exact: true,
-    element: (
-      <AuthorizedRoute>
-        <TabsDemo />
-      </AuthorizedRoute>
-    ),
-  }, */
+  // ------------------------------
 ]
 
 export default routes

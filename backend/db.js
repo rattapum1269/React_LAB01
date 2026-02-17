@@ -4,6 +4,7 @@ const {
 } = require('./common')
 const cfg = readcfg();
 
+const mongoose = require('mongoose'); //
 const os = require('os');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
@@ -19,19 +20,18 @@ const packageDefinition = protoLoader.loadSync(
 );
 const dbaseproject = grpc.loadPackageDefinition(packageDefinition).dbaseproject;
 
-const sch = {
-  mongoose,
+// --- [1. แก้ไขการ Import ตรงนี้] ---
+const {
   userSchema,
+  deviceSchema, // <-- เพิ่มตัวนี้
 } = require('./libs/schema');
+// -------------------------------
 
 const db = {
   MainBase: null,
 }
 
-/* 
-  Connection setup function
-*/
-
+/* Connection setup function */
 function baseConnect (name,) {
   return new Promise(resolve => {
 
@@ -40,7 +40,6 @@ function baseConnect (name,) {
 
     const conn = mongoose.createConnection(dbaseURL+name, );
 
-    // Wait for the connection to open (optional, as Mongoose buffers operations)
     conn.on('connected', () => {
         console.log('\x1b[33m%s\x1b[0m', 'Connect to ->', dbaseURL+name);
         db.MainBase = conn
@@ -53,9 +52,7 @@ function baseConnect (name,) {
       resolve(null)
     });
 
-    // Handle connection errors
     conn.on('error', (err) => {
-      // console.log('\x1b[31m%s\x1b[0m', 'Connection error:', err);
       console.log('- Mongodb error -', );
       db.MainBase = null
     });
@@ -64,9 +61,7 @@ function baseConnect (name,) {
 }
 
 async function createDocument (call, cb) {
-
-  console.log('createDocument ->', call.request.collection, );
-
+  // console.log('createDocument ->', call.request.collection, );
   const obj = {
     collection: call.request.collection,
     query: call.request.query,
@@ -75,23 +70,19 @@ async function createDocument (call, cb) {
 
   const base = db.MainBase
   if (base)  {    
-
     const Model = base.models[call.request.collection]
     const data = JSON.parse(call.request.data)
     
     if (!data._id)   data._id = new mongoose.Types.ObjectId()+''
     
-    // const model = new Model(data);
-    // await model.save();
-    // obj.data = JSON.stringify({ _id: data._id})
-    // cb(null, obj);
-
+    // ใช้ insertOne และเพิ่ม catch error
     Model.insertOne(data).then(function (resp) { 
-      // console.log(resp)
       if (resp)  obj.data = JSON.stringify([resp])
       cb(null, obj)
-    });  
-    
+    }).catch(err => {
+      console.error('Create Error:', err.message);
+      cb(null, obj);
+    });
   }
   else  {
     cb(null, obj);
@@ -99,9 +90,7 @@ async function createDocument (call, cb) {
 }
 
 async function readDocument (call, cb) {
-  
-  console.log('readDocument ->', call.request.collection, call.request.query);
-
+  // console.log('readDocument ->', call.request.collection);
   const obj = {
     collection: call.request.collection,
     query: call.request.query,
@@ -110,8 +99,14 @@ async function readDocument (call, cb) {
  
   const base = db.MainBase
   if (base)  {    
-
+    // --- จุดที่สำคัญ: ต้องมี Model ก่อนถึงจะเรียกใช้ได้ ---
     const Model = base.models[call.request.collection]
+    
+    if (!Model) {
+      console.error(`Error: Model '${call.request.collection}' not found. Did you register it?`);
+      return cb(null, obj);
+    }
+
     const query = JSON.parse(call.request.query)
 
     let populate = null
@@ -125,17 +120,15 @@ async function readDocument (call, cb) {
 
     if (Object.keys(query).length)  {      
       Model.findOne(query).populate(populate).select(select).then(function (resp) { 
-        // console.log(resp)
         if (resp)  obj.data = JSON.stringify([resp])
         cb(null, obj)
-      });  
+      }).catch(err => cb(null, obj));  
     }
     else  {
       Model.find(query).populate(populate).select(select).then(function (resp) { 
-        // console.log(resp)
         if (resp)  obj.data = JSON.stringify(resp)
         cb(null, obj)
-      });  
+      }).catch(err => cb(null, obj));  
     }
 
   }
@@ -145,9 +138,7 @@ async function readDocument (call, cb) {
 }
 
 async function updateDocument (call, cb) {
-
-  console.log('updateDocument ->', call.request.collection, call.request.query);
-
+  console.log('updateDocument ->', call.request.collection);
   const obj = {
     collection: call.request.collection,
     query: call.request.query,
@@ -156,23 +147,23 @@ async function updateDocument (call, cb) {
 
   const base = db.MainBase
   if (base)  {    
-
     const Model = base.models[call.request.collection]
     const query = JSON.parse(call.request.query)
     let data = JSON.parse(call.request.data)
 
+    delete data._id; // ป้องกัน Error แก้ไข _id
+
     Model.updateOne(query, { $set: data } ).then(function (resp) { 
-      // console.log('updateDocument ->', resp,);
       if (resp)  {
-        if (resp.nModified == 0 && resp.n == 0) {
-          console.error('updateDocument -> error!');
-        }
         obj.data = JSON.stringify(resp)
         cb(null, obj)
       }
       else  {
         cb(null, obj);
       }
+    }).catch(function(err) {
+       console.error('Update Error:', err.message);
+       cb(null, obj);
     });
 
   }
@@ -182,9 +173,7 @@ async function updateDocument (call, cb) {
 }
 
 async function deleteDocument (call, cb) {
-
-  console.log('deleteDocument ->', call.request.collection, call.request.query,);
-
+  // console.log('deleteDocument ->', call.request.collection);
   const obj = {
     collection: call.request.collection,
     query: call.request.query,
@@ -193,18 +182,15 @@ async function deleteDocument (call, cb) {
 
   const base = db.MainBase
   if (base)  {    
-    
     const Model = base.models[call.request.collection]
     const query = JSON.parse(call.request.query)
 
     Model.deleteOne(query).then(function (resp) { 
-      // console.log(err, resp);
       if (resp)  {
         obj.data = JSON.stringify(resp)
       }
       cb(null, obj)
-    });  
-
+    }).catch(err => cb(null, obj));  
   }
   else  {
     cb(null, obj);
@@ -212,61 +198,40 @@ async function deleteDocument (call, cb) {
 }
 
 async function dropDatabase (call, cb) {
-
-  console.log('dropDatabase ->', call.request);
-
   if (db.MainBase)  {
     db.MainBase.dropDatabase(() => {
       db.MainBase.close(() => {
         cb(null, { status: true })
       });
     })
-  }
-  else  {
-    cb(null, { status: false })
-  }
+  } else { cb(null, { status: false }) }
 }
 
 async function dropCollection (call, cb) {
-
-  console.log('dropCollection ->', call.request);
-
   if (db.MainBase)  {
-    // console.log('dropCollection =>', call.request);
     db.MainBase.dropCollection(call.request.collection, (err, result) => {
-      // console.log('dropCollection ->', err, result)
       cb(null, { status: true });
     });
-  }  
-  else  {
-    cb(null, { status: false });
-  }
+  } else { cb(null, { status: false }); }
 }
 
 async function dbIsReady(call, cb) {
-
   let state = false
   if (db.MainBase)  state = true
-
   console.log('dbIsReady ->', state);
-
   cb (null, { status: state })
 }
 
 function getServer() {
   var server = new grpc.Server({'grpc.max_send_message_length': 50*1024*1024, 'grpc.max_receive_message_length': 50*1024*1024});
   server.addService(dbaseproject.DbaseProject.service, {
-
     createDocument: createDocument,
     readDocument: readDocument,
     updateDocument: updateDocument,
     deleteDocument: deleteDocument,
-
     dropDatabase: dropDatabase,
     dropCollection: dropCollection,
-
     dbIsReady: dbIsReady,
-
   });
   return server;
 }
@@ -278,7 +243,10 @@ async function main ()  {
   }
   
   if (db.MainBase)  {
-    db.MainBase.model('User', sch.userSchema);      
+    // --- [2. ลงทะเบียน Model ให้ครบตรงนี้] ---
+    db.MainBase.model('User', userSchema);
+    db.MainBase.model('Device', deviceSchema); // <-- เพิ่มบรรทัดนี้!
+    // ------------------------------------
   }
   else  {
     main()
@@ -287,26 +255,24 @@ async function main ()  {
 
   const routeServer = getServer();  
   routeServer.bindAsync('0.0.0.0:'+cfg.dbasePort, grpc.ServerCredentials.createInsecure(), () => {
-    // routeServer.start();
+    routeServer.start();
   });
 
   let dateTime = new Date();
   console.log("Dbase Server port ("+cfg.dbasePort+") start ->", dateTime.getDate()+'/'+(dateTime.getMonth()+1)+'/'+dateTime.getFullYear(), 
   dateTime.getHours()+':'+dateTime.getMinutes()+':'+dateTime.getSeconds());  
 
+  // --- ส่วนสร้าง Admin เริ่มต้น (เหมือนเดิม) ---
   let pwd = await createPassword('Default@1234');
   let user = null
 
   readDocument({ request:{
     collection: 'User',
-    // query: JSON.stringify({ _id: 'admin'}),
     query: JSON.stringify({}),
   }}, (err, resp) => {
-
     if (resp)  {
       let temp = JSON.parse(resp.data)
       if (temp.length)  user = temp[0]
-      console.log('Users ->', err, user)
     }
 
     if (!user)  {
@@ -327,81 +293,13 @@ async function main ()  {
       }}, (err, resp) => {
         if (resp)  {
           const status = JSON.parse(resp.data)
-          console.log('Create ->', status)
+          console.log('Create Default Admin ->', status)
         }
       })
     }
-
   });          
-
-/*     readDocument({ request:{
-      collection: 'User',
-      // query: JSON.stringify({ _id: 'admin'}),
-      query: JSON.stringify({}),
-    }}, (err, resp) => {
-
-      if (resp)  {
-        user = JSON.parse(resp.data)
-        console.log('Users ->', err, user)
-      }
-     
-      if (user)  {
-
-        user.password = pwd
-
-        updateDocument({ request: { 
-          collection: 'User',
-          query: JSON.stringify({ _id: 'admin' }),
-          data: JSON.stringify(user),
-        }}, (err, resp) => {
-
-          if (resp)  {
-            const status = JSON.parse(resp.data)
-            console.log('Update ->', status)
-          }
-
-          deleteDocument({ request:{
-            collection: 'User',
-            query: JSON.stringify({ _id: 'admin' }),
-          }}, (err, resp) => {
-
-            if (resp)  {
-              const status = JSON.parse(resp.data)
-              console.log('Delete ->', status)
-            }
-
-            user = {
-              _id: 'admin',
-              userName: 'admin',
-              fullName: 'admin',
-              userLevel: 'admin',
-              userState: 'enable',
-              email: 'admin@gmail.com',
-              password: pwd,
-              dateCreate: new Date()+'',
-              dateExpire: '',
-            }
-            createDocument({ request: {
-              collection: 'User',
-              data: JSON.stringify(user),
-            }}, (err, resp) => {
-              if (resp)  {
-                const status = JSON.parse(resp.data)
-                console.log('Create ->', status)
-              }
-            })
-
-          });          
-
-        })
-
-      }     
-
-    }); */
-
 }
 
 if (require.main === module) {
   main();
 }
-
